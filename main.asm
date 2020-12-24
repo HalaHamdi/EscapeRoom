@@ -22,7 +22,11 @@ Key1Pressed db " This is the Chatting screen $"
 Level1Pressed db "This is Level 1 screen $"
 Level2Pressed db "This is Level 2 screen $"
 
-
+;Finishing the game Data
+end1 db 'END GAME','$'
+winner db 'The winner is ','$'
+Nameofwinner db 'Nadeen','$' ;this data will be changed next
+movtooptions db 'To move to the option screen please press Enter','$'
 .code 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ChooseLevelScreen PROC
@@ -284,11 +288,88 @@ waiting PROC
         ret
 waiting ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;Finishing game screen Proc;;;;;;;
+finishgame PROC
+;;;;clear screan
+mov ax,0600h
+mov bh,07
+mov cx,0
+mov dx, 184Fh
+int 10h
+; moving cursor to  row =12 col=30
+
+mov ah,2
+mov bh,0
+mov dh,6
+mov dl,39
+int 10h
+push dx  ;to get the cursor position back again
+
+; Printing the first string
+mov ah,9
+lea dx,end1
+int 21h
+
+pop dx
+
+
+mov ah,2
+add dh,2
+mov dl,32
+int 10h
+
+push dx
+
+
+mov ah,9
+lea dx,winner
+int 21h
+
+pop dx
+
+mov ah,2
+add dl,14
+int 10h
+
+push dx
+
+;printing the  name of the winner should be changed later
+mov ah,9
+lea dx,Nameofwinner
+int 21h
+
+pop dx
+
+mov ah,2
+add dh,2
+mov dl,20
+int 10h
+
+;moving to option screen
+mov ah,9
+lea dx,movtooptions
+int 21h
+
+WaitingForPressing:
+mov ah,0
+int 16h
+jz WaitingForPressing
+; checking that the scancode is for Enter
+cmp ah,28
+jnz WaitingForPressing
+;should go to option screen
+
+call OptionsScreen
+ret
+finishgame ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Main PROC Far
 Mov ax, @data 
 mov ds ,ax
 
 call Enter_Name_Screen
+call finishgame
 
 EndCode :
 ret
