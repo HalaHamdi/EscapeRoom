@@ -2,10 +2,20 @@
 .Model Small
 .stack 64 
 .data
-String1 db "* To start chatting press 1 $"
-String2 db "* To Choose Game Level press 2 $"
-String3 db "* To End The program press ESC $"
 
+;Enter Name Screen Data
+Player1_Name db 30, ?,30 dup('$')
+enterName_request db 'Please enter your name: ','$'
+continue_request db 'Press enter key to continue.','$'
+Enter_ScanCode db 01ch,'$'
+dot db '.','$'
+
+;Game Option Screen Data
+Option1_String db "* To start chatting press 1 $"
+Option2_String db "* To Choose Game Level press 2 $"
+Option3_String db "* To End The program press ESC $"
+
+;Choosing Level Screen Data
 Level1 db "-For an Easy Level press 1 $"
 Level2 db "-For a Hard Level Press 2 $"
 Key1Pressed db " This is the Chatting screen $"
@@ -126,7 +136,7 @@ int 10h
 
 ; Printing the first string
 mov ah,9
-mov dx,offset String1
+mov dx,offset Option1_String
 int 21h
 
 ;new line  with a bit of space =3 betwen lines
@@ -140,7 +150,7 @@ mov dl,19H
 int 10h
 ;printing the  second string 
 mov ah,9
-mov dx,offset String2
+mov dx,offset Option2_String
 int 21h
 
 ;new line 
@@ -155,7 +165,7 @@ int 10h
 
 ;printing the  Third string 
 mov ah,9
-mov dx,offset String3
+mov dx,offset Option3_String
 int 21h
 
 CheckkeyPressed:
@@ -206,11 +216,79 @@ EndOptionScreen:ret
 OptionsScreen ENDP
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+Enter_Name_Screen PROC
+    ;clear the screen
+        Mov ax, 03h
+        int 10h
+
+        ;setting the cursor
+        ;dh=row=10 dl=column=20
+        mov ah,2h
+        mov dh, 10d    
+        mov dl,20d
+        int 10h
+        
+        ;print enterName_request
+        mov ah,9h
+        mov dx, offset enterName_request
+        int 21h
+        
+        ;get the name from the user
+        mov ah, 0Ah
+        mov dx,offset Player1_Name
+        int 21h
+
+        ;setting the cursor
+        ;dh=row=12 dl=column=20
+        mov ah,2h
+        mov dh, 12d    
+        mov dl,20d
+        int 10h
+        
+        ;print continue_request
+        mov ah,9h
+        mov dx, offset continue_request
+        int 21h
+        
+        ;getting the cursor position
+        mov ah,3H
+        mov bh,0h 
+        int 10H
+
+        ;loop until the pressed key is enter
+        Not_Enter_Key:
+
+        ;printing a dot as long as the pressed key is not enter
+        inc dl
+        call waiting
+
+        ;getting the key pressed
+        ;ah will hold the scancode of the pressed key
+        mov ah,0h 
+        int 16h
+        
+        ;check if this char is the scan code of enter or not
+        cmp ah,Enter_ScanCode
+        JNE Not_Enter_Key
+        
+        ;navigate to option's screen
+        call OptionsScreen
+        ret
+Enter_Name_Screen ENDP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Printing a dot Procedure (.)
+waiting PROC
+        mov ah,9h
+        mov dx, offset dot
+        int 21h
+        ret
+waiting ENDP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Main PROC Far
 Mov ax, @data 
 mov ds ,ax
 
-call OptionsScreen
+call Enter_Name_Screen
 
 EndCode :
 ret
