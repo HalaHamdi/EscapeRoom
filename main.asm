@@ -641,6 +641,29 @@ DrawLevel2 ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;LOGIC PROCEDURES;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MOVING LOGIC FOR PLAYER1;;;;;;;;;;;;;;;;;;;;;;;;;;;
 movRight PROC
+    ;Wall constrain
+    ;checking the validity of moving right
+    ;setting attributes for reading the pixel color
+    ;note that the color is returned in al
+    mov AH,0Dh	
+    mov BH,0
+    
+    ;setting dx and cx to scan through the column right to the player
+    mov dx,Y_coordinate_Start
+    mov cx,X_coordinate_End
+    ;inc cx
+    
+    Continue_Scanning_Right_Column: 
+    ;Read graphics pixel and comparing it with the Maze color
+    int 10h
+    cmp al,Color
+    JE End_Of_Moving_Right
+    inc dx
+    cmp dx,Y_coordinate_End
+    ;when modify the moving this should be JNG
+    JS Continue_Scanning_Right_Column
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;The Move ItSelf;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;deleting the mostleft column
     mov cx,X_coordinate_Start
     mov dx,Y_coordinate_Start
@@ -672,13 +695,36 @@ movRight PROC
     mov si, [di]
     inc si
     mov [di],si
-
+    End_Of_Moving_Right:
     ret
 movRight ENDP
 
 ;description
 movLeft PROC
     
+    ;Wall constrain
+    ;checking the validity of moving left
+    ;setting attributes for reading the pixel color
+    ;note that the color is returned in al
+    mov AH,0Dh	
+    mov BH,0
+    
+    ;setting dx and cx to scan through the column left the player
+    mov dx,Y_coordinate_Start
+    mov cx,X_coordinate_Start
+    dec cx
+    
+    Continue_Scanning_Left_Column: 
+    ;Read graphics pixel and comparing it with the Maze color
+    int 10h
+    cmp al,Color
+    JE End_Of_Moving_Left
+    inc dx
+    cmp dx,Y_coordinate_End
+    ;when modify the moving this should be JNG
+    JS Continue_Scanning_Left_Column
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;The Move ItSelf;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;set the X_end to it's new value
     mov di,offset X_coordinate_End
     mov si, [di]
@@ -709,12 +755,32 @@ movLeft PROC
     inc dx
     cmp dx,Y_coordinate_End
     JNE drawNewColumn2
-
+    End_Of_Moving_Left:
     ret
 movLeft ENDP
 
 ;description
 movUP PROC
+    ;Wall constrain
+    ;checking the validity of moving up
+    ;setting attributes for reading the pixel color
+    ;note that the color is returned in al
+    mov AH,0Dh	
+    mov BH,0
+    
+    ;setting dx and cx to scan through the row above the player
+    mov dx,Y_coordinate_Start
+    dec dx
+    mov cx,X_coordinate_Start
+    
+    Continue_Scanning_Upper_Row: 
+    ;Read graphics pixel and comparing it with the Maze color
+    int 10h
+    cmp al,Color
+    JE End_Of_Moving_UP
+    inc cx
+    cmp cx,X_coordinate_End
+    JS Continue_Scanning_Upper_Row
     
     ;set the X_end to it's new value
     mov di,offset Y_coordinate_End
@@ -733,12 +799,12 @@ movUP PROC
     cmp cx,X_coordinate_End
     JNE deleteColumn3
     
-    ;set the X_start to it's new value
+    ;set the Y_start to it's new value
     mov di,offset Y_coordinate_Start
     mov si, [di]
     dec si
     mov [di],si
-    ;drawing a new column after the mostright column
+    ;drawing a new column after the most-top row
     mov dx,Y_coordinate_Start
     mov cx,X_coordinate_Start
     mov al,5h
@@ -747,13 +813,36 @@ movUP PROC
     inc cx
     cmp cx,X_coordinate_End
     JNE drawNewColumn3
-
+    End_Of_Moving_UP:
     ret
 movUP ENDP
 
 ;description
 movDown PROC
     
+    ;Wall constrain
+    ;checking the validity of moving down
+    ;setting attributes for reading the pixel color
+    ;note that the color is returned in al
+    mov AH,0Dh	
+    mov BH,0
+    
+    ;setting dx and cx to scan through the row below the player
+    mov dx,Y_coordinate_End
+    ;inc dx
+    mov cx,X_coordinate_Start
+    
+    Continue_Scanning_Below_Row: 
+    ;Read graphics pixel and comparing it with the Maze color
+    int 10h
+    cmp al,Color
+    JE End_Of_Moving_Down
+    inc cx
+    cmp cx,X_coordinate_End
+    ;when modify the moving this should be JNG
+    JS Continue_Scanning_Below_Row
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;The Move ItSelf;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;deleting the mostright column
     
     mov dx,Y_coordinate_Start
@@ -787,6 +876,7 @@ movDown PROC
     inc si
     mov [di],si
 
+    End_Of_Moving_Down:
     ret
 movDown ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;END OF MOVING LOGIC FOR PLAYER1;;;;;;;;;;;;;;;;;;;;;;;;;;;
