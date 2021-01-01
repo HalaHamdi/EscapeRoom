@@ -51,7 +51,7 @@ Delete_Y_coordinate_End dw 4
 ;Hint check attributes
 HintExist db 0
 HintColor db ? ;for drowing or clearing hints
-currentSpeed dw 2
+currentSpeed dw 10
 movedirection db 0 ;indicates the direction of hint that the player take (forward/backward)
 
 
@@ -1495,6 +1495,34 @@ DrawLevel2 ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MOVING LOGIC FOR PLAYER1;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;description
 movRight PROC FAR
+    ;the si is a counter that counts the number of single right moves we will perform 
+    ;A right move consists of (currentspeed) single right moves 
+    ;We'll excute this function currentspeed times or till we face an invalid single right move 
+    mov si,0
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Wall constrain;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;checking the validity of moving right
+    ;setting attributes for reading the pixel color (note that the color is returned in al)
+    Continue_The_Right_Move_If_Valid: 
+    mov AH,0Dh	
+    mov BH,0
+    
+    ;setting dx and cx to scan through the column right to the player
+    mov dx,Y_coordinate_End
+    mov cx,X_coordinate_End
+    ;the column just right to the player
+    inc cx
+    
+    ;Scanning is done from buttom to top
+    Continue_Scanning_Right_Column: 
+    ;Read graphics pixel and comparing it with the Maze color
+    int 10h
+    cmp al,9h
+    JE Going_To_End_Of_Moving_Right
+    dec dx
+    cmp dx,Y_coordinate_Start
+    JG Continue_Scanning_Right_Column
+    
     call CheckHintRight
     mov movedirection,0
 	cmp HintExist,0 ; if there is no hint near next move --> do nothing
@@ -1521,41 +1549,82 @@ movRight PROC FAR
     Hint4R :
      ;;Apply_SpeedUp should be called
 	NO_HintRight:  ;If There Is No Hint Continue Normally
-	mov di,Y_coordinate_End
-	inc di
+
+    ;This lines is done to JUMP TWICE TILL THE END OF THE PROCEDURE IF THE PLAYER DON'T HAVE THE CREDIT TO MOVE RIGHT
+    JMP SKIP_THIS_R
+    Going_To_End_Of_Moving_Right: JMP End_Of_Moving_Right
+    SKIP_THIS_R:
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;the moving logic;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
+    mov di,Y_coordinate_End
 	mov Delete_Y_coordinate_End,di
 
 	mov di,Y_coordinate_Start
-    dec di
 	mov Delete_Y_coordinate_Start,di
 
 	mov di,X_coordinate_Start
-    dec di
 	mov Delete_X_coordinate_Start,di
 
 	mov di,X_coordinate_Start
-	add di,currentSpeed
+	inc di
 	mov Delete_X_coordinate_End,di  
 
 	call deletePlayer
 
-
 	mov di,X_coordinate_End
-	add di,currentSpeed
+	inc di
 	mov X_coordinate_End,di
 	
 	mov di,X_coordinate_Start
-	add di,currentSpeed
+	inc di
 	mov X_coordinate_Start,di
-	initializePlayerR:
+	
+    initializePlayerR:
 	call initializePlayer
     mov HintExist,0   ;reset hint exist
+
+    ;check if we performed {#currentSpeed} single right moves or not
+    inc si
+    cmp si,currentSpeed
+    JE End_Of_Moving_Right
+    JMP Continue_The_Right_Move_If_Valid
+
+    End_Of_Moving_Right:
 	ret
 movRight ENDP
 
 ;description
 movLeft PROC FAR
+    ;the si is a counter that counts the number of single left moves we will perform 
+    ;A left move consists of (currentspeed) single left moves 
+    ;We'll excute this function currentspeed times or till we face an invalid single left move 
+    mov si,0
     
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Wall constrain;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;checking the validity of moving left
+    ;setting attributes for reading the pixel color
+    ;note that the color is returned in al
+    Continue_The_Left_Move_If_Valid:
+    mov AH,0Dh	
+    mov BH,0
+    
+    ;setting dx and cx to scan through the column left the player
+    mov dx,Y_coordinate_End
+    ;the column just left to the player
+    mov cx,X_coordinate_Start
+    
+    ;scanning is done from bottom to top
+    Continue_Scanning_Left_Column: 
+    ;Read graphics pixel and comparing it with the Maze color
+    int 10h
+    cmp al,9h
+    JE Going_To_End_Of_Moving_Left
+    dec dx
+    cmp dx,Y_coordinate_Start
+    ;continue scanning as long as dx is greater that the player's start
+    JG Continue_Scanning_Left_Column
+
     call CheckHintLeft
 	mov movedirection,0
 	cmp HintExist,0 ; if there is no hint near next move --> do nothing
@@ -1583,40 +1652,76 @@ movLeft PROC FAR
      ;;Apply_SpeedUp should be called
 	NO_HintLeft:  ;If There Is No Hint Continue Normally
 
+    ;This lines is done to JUMP TWICE TILL THE END OF THE PROCEDURE IF THE PLAYER DON'T HAVE THE CREDIT TO MOVE Left
+    JMP SKIP_THIS_L
+    Going_To_End_Of_Moving_Left: JMP End_Of_Moving_Left
+    SKIP_THIS_L:
+
 	mov di,Y_coordinate_End
-	inc di
 	mov Delete_Y_coordinate_End,di
 
 	mov di,Y_coordinate_Start
-    dec di
 	mov Delete_Y_coordinate_Start,di
 
 	mov di,X_coordinate_End
-	sub di,currentSpeed
-    dec di
+	dec di
 	mov Delete_X_coordinate_Start,di
 
 	mov di,X_coordinate_End
-	add di,currentSpeed
 	mov Delete_X_coordinate_End,di
 
 	call deletePlayer
 	
 	mov di,X_coordinate_End
-	sub di,currentSpeed
+	dec di
 	mov X_coordinate_End,di
 	
 	mov di,X_coordinate_Start
-	sub di,currentSpeed
+	dec di
 	mov X_coordinate_Start,di
 
 	initializePlayerl:
 	call initializePlayer
-		ret
+    
+    ;check if we performed {#currentSpeed} single left moves or not
+    inc si
+    cmp si,currentSpeed
+    JE End_Of_Moving_Left
+    JMP Continue_The_Left_Move_If_Valid
+	
+    End_Of_Moving_Left:
+    ret
 movLeft ENDP
 
 ;description
 movUP PROC FAR
+    ;the si is a counter that counts the number of single up moves we will perform 
+    ;An up move consists of (currentspeed) single up moves 
+    ;We'll excute this function currentspeed times or till we face an invalid single up move 
+    mov si,0
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Wall constrain;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;checking the validity of moving up
+    ;setting attributes for reading the pixel color
+    ;note that the color is returned in al
+    Continue_The_Up_Move_If_Valid:
+    mov AH,0Dh	
+    mov BH,0
+    
+    ;setting dx and cx to scan through the row above the player
+    ;dx holds the coordinate of the row just above the player
+    mov dx,Y_coordinate_Start
+    mov cx,X_coordinate_End
+    
+    ;scanning is done from left to right
+    Continue_Scanning_Upper_Row: 
+    ;Read graphics pixel and comparing it with the Maze color
+    int 10h
+    cmp al,9h
+    JE Going_To_End_Of_Moving_Up
+    dec cx
+    cmp cx,X_coordinate_Start
+    JG Continue_Scanning_Upper_Row
     
     call CheckHintUP
 	mov movedirection,0
@@ -1644,39 +1749,78 @@ movUP PROC FAR
     Hint4U:
      ;;Apply_SpeedUp should be called
      NO_HintUP:
+
+    JMP SKIP_THIS_U
+    Going_To_End_Of_Moving_Up: JMP End_Of_Moving_Up
+    SKIP_THIS_U:
+    
     mov di,Y_coordinate_End
 	mov Delete_Y_coordinate_End,di
 
 	mov di,Y_coordinate_End
-	sub di,currentSpeed
-    dec di
+	dec di
 	mov Delete_Y_coordinate_Start,di
 
 	mov di,X_coordinate_Start
-    dec di
 	mov Delete_X_coordinate_Start,di
 
 	mov di,X_coordinate_End
-	inc di
 	mov Delete_X_coordinate_End,di
 	
 	call deletePlayer
 	
 	mov di,Y_coordinate_End
-	sub di,currentSpeed
+	dec di
 	mov Y_coordinate_End,di
 	
 	mov di,Y_coordinate_Start
-	sub di,currentSpeed
+	dec di
 	mov Y_coordinate_Start,di
+
 	initializePlayerU :
 	call initializePlayeR
 	
+    ;check if we performed {#currentSpeed} single up moves or not
+    inc si
+    cmp si,currentSpeed
+    JE End_Of_Moving_Up
+    JMP Continue_The_Up_Move_If_Valid
+	
+    End_Of_Moving_Up:
 	ret
 movUP ENDP
 
 ;description
 movDown PROC FAR
+    ;the si is a counter that counts the number of single down moves we will perform 
+    ;A down move consists of (currentspeed) single down moves 
+    ;We'll excute this function currentspeed times or till we face an invalid single down move 
+    mov si,0
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Wall constrain;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;checking the validity of moving down
+    ;setting attributes for reading the pixel color
+    ;note that the color is returned in al
+    Continue_The_Down_Move_If_Valid:
+    mov AH,0Dh	
+    mov BH,0
+    
+    ;setting dx and cx to scan through the row below the player
+    ; dx holds the coordinate of the row just below the player
+    mov dx,Y_coordinate_End
+    inc dx
+    mov cx,X_coordinate_End
+    
+    ;scanning is done from left to right
+    Continue_Scanning_Below_Row: 
+    ;Read graphics pixel and comparing it with the Maze color
+    int 10h
+    cmp al,9h
+    JE Going_To_End_Of_Moving_Down
+    dec cx
+    cmp cx,X_coordinate_Start
+    JG Continue_Scanning_Below_Row
+    
     call CheckHintDown
 	mov movedirection,0
 	cmp HintExist,0 ; if there is no hint near next move --> do nothing
@@ -1704,35 +1848,45 @@ movDown PROC FAR
     Hint4D:
      ;;Apply_SpeedUp should be called
     NO_HintDOWN:
-    ;deleting the mostright column
-   mov di,Y_coordinate_Start
-	add di,currentSpeed
+    
+    JMP SKIP_THIS_D
+    Going_To_End_Of_Moving_Down: JMP End_Of_Moving_Down
+    SKIP_THIS_D:
+    
+    ;deleting the mosttop row
+    mov di,Y_coordinate_Start
+	inc di
 	mov Delete_Y_coordinate_End,di
 
 	mov di,Y_coordinate_Start
-    dec di
 	mov Delete_Y_coordinate_Start,di
 
 	mov di,X_coordinate_Start
-    dec di
 	mov Delete_X_coordinate_Start,di
 
 	mov di,X_coordinate_End
-	inc di
 	mov Delete_X_coordinate_End,di
 	
 	call deletePlayer
 	
 	mov di,Y_coordinate_End
-	add di,currentSpeed
+	inc di
 	mov Y_coordinate_End,di
 	
 	mov di,Y_coordinate_Start
-	add di,currentSpeed
+	inc di
 	mov Y_coordinate_Start,di
+
 	initializePlayerD:
 	call initializePlayer
-		
+	
+    ;check if we performed {#currentSpeed} single down moves or not
+    inc si
+    cmp si,currentSpeed
+    JE End_Of_Moving_Down
+    JMP Continue_The_Down_Move_If_Valid
+
+    End_Of_Moving_Down:
 	ret
 movDown ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;END OF MOVING LOGIC FOR PLAYER1;;;;;;;;;;;;;;;;;;;;;;;;;;;
