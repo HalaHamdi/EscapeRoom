@@ -51,7 +51,7 @@ Delete_Y_coordinate_End dw 4
 ;Hint check attributes
 HintExist db 0
 HintColor db ? ;for drowing or clearing hints
-currentSpeed dw 10
+currentSpeed dw 2
 movedirection db 0 ;indicates the direction of hint that the player take (forward/backward)
 
 
@@ -73,16 +73,16 @@ Icon_HalfHeight dw 2 ;please note that it's a good practice to calculate this va
 
 ;speed up hint data
 ArrowsCount dw 4 ;the speedup icon will consist of 4 following arrows
-SpeedUP_Icon_Start_Column dw 34
-SpeedUP_Icon_Start_Row dw 22
+SpeedUP_Icon_Start_Column dw 120
+SpeedUP_Icon_Start_Row dw 29
 SpeedUP_Icon_End_Row dw ? ;SpeedUP_Icon_Start_Row + _Icon_Height
 SpeedUP_Icon_End_Column dw ?
-SpeedUP_Left_Part_Color db 0Bh ;light blue
-SpeedUP_Right_Part_Color db 0Ch ;light red
+SpeedUP_Left_Part_Color db 2h ;light blue
+SpeedUP_Right_Part_Color db 2h ;light red
 
 ;freeze hint data
-Freeze_Icon_Start_Column dw 50
-Freeze_Icon_Start_Row dw 22
+Freeze_Icon_Start_Column dw 160
+Freeze_Icon_Start_Row dw 70
 Freeze_Icon_End_Row dw ? ;Freeze_Icon_Start_Row + Icon_Height
 Freeze_Icon_End_Column dw ?
 Freeze_Color db 0Ch ;light red
@@ -107,6 +107,12 @@ Y_coordinate_Start dw 0
 X_coordinate_End dw 4
 Y_coordinate_End dw 4
 
+
+; Saving the time for chaning the speed
+StartTimePlayer1CL db ?
+StartTimePlayer1Ch db ?
+StartTimePlayer1DH db ?
+SpeedChangedClicks dw 10   ;this is the amount of ticks that the player will remain is this chaning speed mode per sec
 
 ;Finishing the game Data
 end1 db 'END GAME','$'
@@ -331,6 +337,142 @@ MoveForward PROC
     RETURN:
 	ret
 MoveForward ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; To Freeze the player ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;description
+FreezePlayer PROC
+
+    mov di,Freeze_Icon_End_Row        ;Set Coordinate of the hint to be deleted
+	mov Delete_Y_coordinate_End,di
+
+	mov di,Freeze_Icon_Start_Row
+    dec di
+	mov Delete_Y_coordinate_Start,di
+
+	mov di,Freeze_Icon_Start_Column
+    dec di
+	mov Delete_X_coordinate_Start,di
+
+	mov di,Freeze_Icon_End_Column
+    inc di
+	mov Delete_X_coordinate_End,di
+
+    call deletePlayer    
+
+     ;the satus and speed of player to be freezed
+    mov bx,0
+    mov currentSpeed,bx
+    mov bx,1  
+    mov StatusPlayer1,1
+    mov StatusPlayer2,1
+    
+    ; to get the system time
+    mov ah,2
+    int 1Ah   ; ch=hours / cl =minutes / dh =seconds 
+    mov StartTimePlayer1Ch,Ch 
+    mov StartTimePlayer1CL,cl      
+    mov StartTimePlayer1Dh ,Dh   
+    ret
+FreezePlayer ENDP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; To Speed The Player ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;description
+SpeedPlayer PROC
+    mov di,SpeedUP_Icon_End_Row        ;Set Coordinate of the hint to be deleted
+	mov Delete_Y_coordinate_End,di
+
+	mov di,SpeedUP_Icon_Start_Row
+    dec di
+	mov Delete_Y_coordinate_Start,di
+
+	mov di,SpeedUP_Icon_Start_Column
+    dec di
+	mov Delete_X_coordinate_Start,di
+
+	mov di,SpeedUP_Icon_End_Column
+    inc di
+	mov Delete_X_coordinate_End,di
+
+    call deletePlayer  
+
+      ;the satus and speed of player to be freezed
+    mov bx,4
+    mov currentSpeed,bx
+    mov bx,2  
+    mov StatusPlayer1,2
+    mov StatusPlayer2,2
+    
+    ; to get the system time
+    mov ah,2
+    int 1Ah   ; ch=hours / cl =minutes / dh =seconds 
+    mov StartTimePlayer1Ch,Ch 
+    mov StartTimePlayer1CL,cl      
+    mov StartTimePlayer1Dh ,Dh  
+
+    ret
+SpeedPlayer ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Reset Player Speed ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;description
+CheckResetPlayerSpeed PROC
+
+    ; The Bx will sotre the time difference in seconds between current
+    ; Time and the time the player took the hint
+
+    ; to get the system time
+    mov ah,2
+    int 1Ah   ; ch=hours / cl =minutes / dh =seconds 
+
+    mov bx,0
+    cmp StartTimePlayer1Ch,ch
+    je CalculateMinutes
+    mov bx,3600
+    CalculateMinutes:cmp StartTimePlayer1CL ,cl
+    je CalculateSeconds
+    cmp bx,0
+    je AddingMinutes
+    ; sub bx,3540
+    mov bx,60
+    jmp CalculateSeconds
+    AddingMinutes:mov bx,60
+    CalculateSeconds:cmp StartTimePlayer1DH,dh
+    je ActionToTake
+    jG StartSecondsGreater
+    sub dh,StartTimePlayer1DH
+    mov cl,dh
+    mov ch,0
+    cmp bx,0
+    je AddSeconds
+    sub bx,cx
+    jmp ActionToTake
+
+
+    StartSecondsGreater:
+    mov cl,StartTimePlayer1DH
+    sub cl,dh
+    mov ch,0
+    cmp bx,0
+    je AddSeconds
+    sub bx,cx
+    jmp ActionToTake
+
+    AddSeconds:mov bx,cx
+    
+
+    ActionToTake:
+    cmp bx,SpeedChangedClicks 
+    jl EndCheckSpeed
+
+    ; retrun to noraml speed
+    mov bx,2
+    mov currentSpeed,bx
+    mov bx,0 
+    mov StatusPlayer1,0
+    mov StatusPlayer2,0
+
+EndCheckSpeed:
+    ret
+CheckResetPlayerSpeed ENDP
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;DRAWING PROCEDURES;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;DRAWING PLAYER1;;;;;;;;;;;;;;;;;;;;;;;;;;;
 initialDraw PROC
@@ -1545,9 +1687,14 @@ movRight PROC FAR
     mov bl,Freeze_Color 
     cmp HintExist,bl
     jne Hint4R 
-    ;; call Apply_Freeze  --> should be called
+    call FreezePlayer
+    ; call DrowStatusBar          ;to be uncommented
     Hint4R :
-     ;;Apply_SpeedUp should be called
+    mov bl,SpeedUP_Left_Part_Color 
+    cmp HintExist,bl
+    jne NO_HintRight
+    call SpeedPlayer
+    ; call DrowStatusBar          ;to be uncommented
 	NO_HintRight:  ;If There Is No Hint Continue Normally
 
     ;This lines is done to JUMP TWICE TILL THE END OF THE PROCEDURE IF THE PLAYER DON'T HAVE THE CREDIT TO MOVE RIGHT
@@ -1557,6 +1704,12 @@ movRight PROC FAR
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;the moving logic;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
+    ; First Lets check if he is not in normal speed
+    cmp StatusPlayer1,0
+    je MovingRightItself
+    call CheckResetPlayerSpeed 
+
+	MovingRightItself:
     mov di,Y_coordinate_End
 	mov Delete_Y_coordinate_End,di
 
@@ -1647,9 +1800,14 @@ movLeft PROC FAR
     mov bl,Freeze_Color 
     cmp HintExist,bl
     jne Hint4L
-    ;; call Apply_Freeze  --> should be called
+    call FreezePlayer
+    ; call DrowStatusBar          ;to be uncommented
     Hint4L:
-     ;;Apply_SpeedUp should be called
+    mov bl,SpeedUP_Left_Part_Color 
+    cmp HintExist,bl
+    jne NO_HintLeft
+    call SpeedPlayer
+    ; call DrowStatusBar          ;to be uncommented
 	NO_HintLeft:  ;If There Is No Hint Continue Normally
 
     ;This lines is done to JUMP TWICE TILL THE END OF THE PROCEDURE IF THE PLAYER DON'T HAVE THE CREDIT TO MOVE Left
@@ -1657,6 +1815,12 @@ movLeft PROC FAR
     Going_To_End_Of_Moving_Left: JMP End_Of_Moving_Left
     SKIP_THIS_L:
 
+    ; First Lets check if he is not in normal speed
+    cmp StatusPlayer1,0
+    je MovingLeftItself
+    call CheckResetPlayerSpeed 
+
+	MovingLeftItself:
 	mov di,Y_coordinate_End
 	mov Delete_Y_coordinate_End,di
 
@@ -1745,15 +1909,26 @@ movUP PROC FAR
     mov bl,Freeze_Color 
     cmp HintExist,bl
     jne Hint4U
-    ;; call Apply_Freeze  --> should be called
+    call FreezePlayer
+    ; call DrowStatusBar          ;to be uncommented
     Hint4U:
-     ;;Apply_SpeedUp should be called
+     mov bl,SpeedUP_Left_Part_Color 
+    cmp HintExist,bl
+    jne NO_HintUP
+    call SpeedPlayer
+    ; call DrowStatusBar          ;to be uncommented
      NO_HintUP:
 
     JMP SKIP_THIS_U
     Going_To_End_Of_Moving_Up: JMP End_Of_Moving_Up
     SKIP_THIS_U:
     
+    ; First Lets check if he is not in normal speed
+    cmp StatusPlayer1,0
+    je MovingUpItself
+    call CheckResetPlayerSpeed 
+
+	MovingUpItself:
     mov di,Y_coordinate_End
 	mov Delete_Y_coordinate_End,di
 
@@ -1844,9 +2019,14 @@ movDown PROC FAR
     mov bl,Freeze_Color 
     cmp HintExist,bl
     jne Hint4D
-    ;; call Apply_Freeze  --> should be called
+    call FreezePlayer
+    ; call DrowStatusBar          ;to be uncommented
     Hint4D:
-     ;;Apply_SpeedUp should be called
+     mov bl,SpeedUP_Left_Part_Color 
+    cmp HintExist,bl
+    jne NO_HintDOWN
+    call SpeedPlayer
+    ; call DrowStatusBar          ;to be uncommented
     NO_HintDOWN:
     
     JMP SKIP_THIS_D
@@ -1854,6 +2034,13 @@ movDown PROC FAR
     SKIP_THIS_D:
     
     ;deleting the mosttop row
+
+    ; First Lets check if he is not in normal speed
+    cmp StatusPlayer1,0
+    je MovingDownItself
+    call CheckResetPlayerSpeed 
+
+	MovingDownItself:
     mov di,Y_coordinate_Start
 	inc di
 	mov Delete_Y_coordinate_End,di
@@ -1965,6 +2152,15 @@ DrawLevel1 PROC FAR
     mov Backward_Icon_Start_Row , 95
     mov Backward_Icon_End_Row ,99
     mov Backward_Icon_End_Column , 197
+
+
+    ;Freeze hint data
+    mov Freeze_Icon_Start_Column ,140
+    mov Freeze_Icon_Start_Row , 50
+
+    ;Speed Up hint data 
+    mov SpeedUP_Icon_Start_Column ,120
+    mov SpeedUP_Icon_Start_Row ,25
 
     ;Initializing the maze with all hints
     call DrawSpeedUpHint
