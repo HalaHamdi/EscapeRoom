@@ -8,7 +8,7 @@ Player1_Name db 30, ?,30 dup('$')
 Player2_Name db 30, ?,30 dup('$')
 NormalStatus db 'Normal','$'
 FrozenStatus db 'Frozen','$'
-SpeededUpStatus db 'Speeded Up','$'
+SpeededUpStatus db 'Speed Up','$'
 StatusPlayer1 db 0                       ;to indicate the current state of the player(Normal,Frozen,SpeededUP)
 StatusPlayer2 db 0
 enterName_request db 'Please Enter First Player name: ','$'
@@ -29,15 +29,16 @@ Key1Pressed db " This is the Chatting screen $"
 Level1Pressed db "This is Level 1 screen $"
 Level2Pressed db "This is Level 2 screen $"
 
-
-
+;Maze Color
+Maze_Color db ? 
 
 ;Maze drawing attributes
 cx1 dw 30
 cx2 dw 210
 dx1 dw 20
 dx2 dw 135
-Color db 09
+Color db 9
+
 
 ;Attribute to check Level of the maze
 Level db 1
@@ -55,8 +56,7 @@ currentSpeed dw 2
 movedirection db 0 ;indicates the direction of hint that the player take (forward/backward)
 
 
-;Status Bar attributes
-PLayerStatus dw ?
+
 
 ;Drawing Horizontal Line attributes
 Horizintal_Line_Start_Column dw ?
@@ -165,7 +165,7 @@ CheckHintLeft PROC
     mov cx,X_coordinate_Start
     dec cx                                      ;to reach  the following column (start position of cx  in the loop)
 	mov bx,cx
-	sub bx,currentSpeed                                ;to reach  the last column (end condition of the loop)
+	sub bx,currentSpeed                         ;to reach  the last column (end condition of the loop)
 
 	SearchHintHorizontallyL:       
 	mov ah,0Dh                                  ;for the color interupt
@@ -477,17 +477,17 @@ CheckResetPlayerSpeed ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;DRAWING PLAYER1;;;;;;;;;;;;;;;;;;;;;;;;;;;
 initialDraw PROC
 
-    mov cx,X_coordinate_Start
-    mov dx,Y_coordinate_Start
+    mov cx,X_coordinate_End
+    mov dx,Y_coordinate_End
     mov al,5
     mov ah,0ch
     row: int 10h
-    inc cx
-    cmp cx,X_coordinate_End
+    dec cx
+    cmp cx,X_coordinate_Start
     JNE row
-    mov cx,0
-    inc dx
-    cmp dx,Y_coordinate_End
+    mov cx,X_coordinate_End
+    dec dx
+    cmp dx,Y_coordinate_Start
     JNE row
     RET
 initialDraw ENDP
@@ -1476,37 +1476,30 @@ DrawSpeedUpHint ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Drow Status Bar;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 DrowStatusBar PROC far
-
-   ;clear the screen
-    Mov ax, 03h
-    int 10h
-
-
-    mov ah,0
-    mov al,13h
-    int 10h
-   ;DROW PLAYER1 NAME
+ ;DROW PLAYER1 NAME
 
 lea di,Player1_Name+2                       ;THE START OF THE NAME
 mov bl,Player1_Name+1   
 inc bl
 mov bh,0
-push bx
+push bx             ;BX HAS THE ACTUAL SIZE OF THE STRING WE DON'T WANT TO LOSE IT SO WE PUSH IT
 
-; SET THE CURSOR TO THE TOP LEFT CORNER 
+; SET THE CURSOR TO THE THE OTHER SIDE OF THE SCREEN
 mov dl,0
 mov dh,0
 mov bh,0
 
 NOTENDSTRING:
- mov bx,5
+ mov bx,5     
  mov ah,2
  inc dl
  int 10h
+
  mov ah,9
  mov al,[di]
  mov cx,1
  int 10h
+
  inc di
  pop bx
  dec bx
@@ -1526,7 +1519,8 @@ pop bx
 inc dl 
 mov ah,2
 mov bh,0    
-int 10h           ;setting cursor in its right position to write status 
+int 10h                 ;setting cursor in its right position to write status 
+
 cmp StatusPlayer1,0
 jne NotNormal
 lea dx,NormalStatus 
@@ -1659,43 +1653,49 @@ movRight PROC FAR
     Continue_Scanning_Right_Column: 
     ;Read graphics pixel and comparing it with the Maze color
     int 10h
-    cmp al,9h
+    cmp al,Maze_Color
     JE Going_To_End_Of_Moving_Right
     dec dx
     cmp dx,Y_coordinate_Start
     JG Continue_Scanning_Right_Column
     
     call CheckHintRight
-    mov movedirection,0
-	cmp HintExist,0 ; if there is no hint near next move --> do nothing
-	JE NO_HintRight ;continue normally
+	cmp HintExist,0                      ; if there is no hint near next move --> do nothing
+	JE NO_HintRight                      ;continue normally
     cmp HintExist,9
     je NO_HintRight
     mov bl,Forward_Color
-    cmp HintExist,bl       ; if there is forward move hint in next move --> set move direction and apply hint
+    cmp HintExist,bl                     ; if there is forward move hint in next move --> set move direction and apply hint
     jne Hint2R
-    mov movedirection,1                ; if there is backward move hint in next move --> reset move direction and apply hint
+    mov movedirection,1                  ; if there is backward move hint in next move --> reset move direction and apply hint
     call MoveForward
     jmp initializePlayerR
+
+
     Hint2R:
     mov bl,Backward_Color
     cmp HintExist,bl
     jne Hint3R 
+    mov movedirection,0
     call MoveForward
 	jmp initializePlayerR
+
+
     Hint3R :
     mov bl,Freeze_Color 
     cmp HintExist,bl
     jne Hint4R 
     call FreezePlayer
-    ; call DrowStatusBar          ;to be uncommented
+    call DrowStatusBar   
+    
+          
     Hint4R :
     mov bl,SpeedUP_Left_Part_Color 
     cmp HintExist,bl
     jne NO_HintRight
     call SpeedPlayer
-    ; call DrowStatusBar          ;to be uncommented
-	NO_HintRight:  ;If There Is No Hint Continue Normally
+    call DrowStatusBar          
+	NO_HintRight:               ;If There Is No Hint Continue Normally
 
     ;This lines is done to JUMP TWICE TILL THE END OF THE PROCEDURE IF THE PLAYER DON'T HAVE THE CREDIT TO MOVE RIGHT
     JMP SKIP_THIS_R
@@ -1771,7 +1771,7 @@ movLeft PROC FAR
     Continue_Scanning_Left_Column: 
     ;Read graphics pixel and comparing it with the Maze color
     int 10h
-    cmp al,9h
+    cmp al,Maze_Color
     JE Going_To_End_Of_Moving_Left
     dec dx
     cmp dx,Y_coordinate_Start
@@ -1779,7 +1779,6 @@ movLeft PROC FAR
     JG Continue_Scanning_Left_Column
 
     call CheckHintLeft
-	mov movedirection,0
 	cmp HintExist,0 ; if there is no hint near next move --> do nothing
 	JE NO_HintLeft ;continue normally
     cmp HintExist,9
@@ -1790,24 +1789,31 @@ movLeft PROC FAR
     mov movedirection,1                ; if there is backward move hint in next move --> reset move direction and apply hint
     call MoveForward
     jmp initializePlayerR
+
+
     Hint2L:
     mov bl,Backward_Color
     cmp HintExist,bl
     jne Hint3L
+    mov movedirection,0
     call MoveForward
 	jmp initializePlayerR
+
+
     Hint3L:
     mov bl,Freeze_Color 
     cmp HintExist,bl
     jne Hint4L
     call FreezePlayer
-    ; call DrowStatusBar          ;to be uncommented
+    call DrowStatusBar   
+
+
     Hint4L:
     mov bl,SpeedUP_Left_Part_Color 
     cmp HintExist,bl
     jne NO_HintLeft
     call SpeedPlayer
-    ; call DrowStatusBar          ;to be uncommented
+     call DrowStatusBar         
 	NO_HintLeft:  ;If There Is No Hint Continue Normally
 
     ;This lines is done to JUMP TWICE TILL THE END OF THE PROCEDURE IF THE PLAYER DON'T HAVE THE CREDIT TO MOVE Left
@@ -1881,14 +1887,13 @@ movUP PROC FAR
     Continue_Scanning_Upper_Row: 
     ;Read graphics pixel and comparing it with the Maze color
     int 10h
-    cmp al,9h
+    cmp al,Maze_Color
     JE Going_To_End_Of_Moving_Up
     dec cx
     cmp cx,X_coordinate_Start
     JG Continue_Scanning_Upper_Row
     
     call CheckHintUP
-	mov movedirection,0
 	cmp HintExist,0 ; if there is no hint near next move --> do nothing
 	JE NO_HintUP ;continue normally
     cmp HintExist,9
@@ -1899,24 +1904,31 @@ movUP PROC FAR
     mov movedirection,1                ; if there is backward move hint in next move --> reset move direction and apply hint
     call MoveForward
     jmp initializePlayerU
+
+
     Hint2U:
     mov bl,Backward_Color
     cmp HintExist,bl
     jne Hint3U
+    mov movedirection,0
     call MoveForward
 	jmp initializePlayerU
+
+
     Hint3U:
     mov bl,Freeze_Color 
     cmp HintExist,bl
     jne Hint4U
     call FreezePlayer
-    ; call DrowStatusBar          ;to be uncommented
+    call DrowStatusBar         
+
+
     Hint4U:
      mov bl,SpeedUP_Left_Part_Color 
     cmp HintExist,bl
     jne NO_HintUP
     call SpeedPlayer
-    ; call DrowStatusBar          ;to be uncommented
+    call DrowStatusBar          
      NO_HintUP:
 
     JMP SKIP_THIS_U
@@ -1990,14 +2002,13 @@ movDown PROC FAR
     Continue_Scanning_Below_Row: 
     ;Read graphics pixel and comparing it with the Maze color
     int 10h
-    cmp al,9h
+    cmp al,Maze_Color
     JE Going_To_End_Of_Moving_Down
     dec cx
     cmp cx,X_coordinate_Start
     JG Continue_Scanning_Below_Row
     
     call CheckHintDown
-	mov movedirection,0
 	cmp HintExist,0 ; if there is no hint near next move --> do nothing
 	JE NO_HintDOWN ;continue normally
     cmp HintExist,9
@@ -2007,26 +2018,32 @@ movDown PROC FAR
     jne Hint2D
     mov movedirection,1                ; if there is backward move hint in next move --> reset move direction and apply hint
     call MoveForward
-    
     jmp initializePlayerD
-    Hint2D:
+
+
+    Hint2D:                ;BACKWORD HINT
     mov bl,Backward_Color
     cmp HintExist,bl
     jne Hint3D
+    mov movedirection,0
     call MoveForward
 	jmp initializePlayerD
-    Hint3D:
+
+
+    Hint3D:                ;FREEZING HINT
     mov bl,Freeze_Color 
     cmp HintExist,bl
     jne Hint4D
     call FreezePlayer
-    ; call DrowStatusBar          ;to be uncommented
-    Hint4D:
+    call DrowStatusBar    
+
+
+    Hint4D:               ;SPEED UP HINT
      mov bl,SpeedUP_Left_Part_Color 
     cmp HintExist,bl
     jne NO_HintDOWN
     call SpeedPlayer
-    ; call DrowStatusBar          ;to be uncommented
+    call DrowStatusBar         
     NO_HintDOWN:
     
     JMP SKIP_THIS_D
@@ -2088,7 +2105,14 @@ movDown ENDP
 ;description
 Level2Screen PROC FAR
     
+
+
+    mov ah,0                   ;GRAPHICS MODE 
+    mov al,13h
+    int 10h
    
+    mov  Maze_Color,9      ;set Maze Color in this level 
+
      ;Drow Status Bar
     call DrowStatusBar
 
@@ -2125,19 +2149,8 @@ Level2Screen ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;DROW LEVEL ONE;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 DrawLevel1 PROC FAR
-;;clear screen
-    ; mov ax,0600h
-    ; mov cx,0
-    ; mov bh,0
-    ; mov dx,184fh
-    ; int 10h
-    
-    ; ;;;;graphic mode 
-    ; mov ah,0
-    ; mov al,13h
-    ; int  10h
-    ;SET LEVEL 
-    mov Level,1
+
+   
     ;Initializing the maze
     call DrawMaze1
     ;Initializing Hintss Coordinates
@@ -2175,6 +2188,13 @@ DrawLevel1 ENDP
 ;description
 Level1Screen PROC FAR
     
+    mov ah,0                   ;GRAPHICS MODE 
+    mov al,13h
+    int 10h
+     
+    ;Set The Maze Color 
+    mov Maze_Color,11
+
     ;Drow Status Bar
     call DrowStatusBar
      
