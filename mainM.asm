@@ -2129,7 +2129,7 @@ movUP PROC FAR
     mov si,0
 
      ; First Lets check if he is not in normal speed
-   cmp PlayerNum,1
+    cmp PlayerNum,1
     jne CheckStatusOfPlayer2Up
     cmp StatusPlayer1,0
     je Continue_The_Up_Move_If_Valid
@@ -2696,16 +2696,24 @@ Level1Screen PROC FAR
     jmp FINISH
     
     player2Wins:
-    mov si, offset Player2_Name +2
+    mov si, offset Player2_Name
+    inc si
+    inc si
     mov di,offset Nameofwinner
     mov cx,lenPlayer2
+    dec cx
+    dec cx
     REP movsb
     jmp ExecuteWinner 
 
     player1Wins:
-    mov si,offset Player1_Name+2
+    mov si,offset Player1_Name
+    inc si
+    inc si
     mov di,offset Nameofwinner
     mov cx,lenPlayer1
+    dec cx
+    dec cx
     REP movsb
     jmp ExecuteWinner 
 
