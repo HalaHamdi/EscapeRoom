@@ -375,20 +375,20 @@ MoveForward PROC
     je Level2_Back
     cmp PlayerNum,1
     jne PLR1 
-    mov X_2_coordinate_Start,117          ;Coordinates in Level one if it is taken by player2
-    mov X_2_coordinate_End,121
-    mov Y_2_coordinate_End,90
-    mov Y_2_coordinate_Start,86
+    mov X_2_coordinate_Start,95          ;Coordinates in Level one if it is taken by player2 and applied on player1
+    mov X_2_coordinate_End,99
+    mov Y_2_coordinate_End,111
+    mov Y_2_coordinate_Start,107
     call Exchange           
     call initializePlayer ;DROW PLAYER 2 (WHO THE HINT WILL BE APPLIED ON ) IN THE ABOVE COORDINATES
     call Exchange         ; TO BACK TO THE ORIGINAL PLAYER (WHO TAKE THE HINT )
     jmp SetDelete_CO_Back
 
     PLR1:
-    mov X_2_coordinate_Start,207          ;Coordinates in Level one if it is taken by player1
-    mov X_2_coordinate_End,211
-    mov Y_2_coordinate_End,49
-    mov Y_2_coordinate_Start,45
+    mov X_2_coordinate_Start,220          ;Coordinates in Level one if it is taken by player1 and applied on player2
+    mov X_2_coordinate_End,224
+    mov Y_2_coordinate_End,28
+    mov Y_2_coordinate_Start,24
     call Exchange
     call initializePlayer
     call Exchange
@@ -3035,6 +3035,11 @@ waiting ENDP
 
 ;;;;Finishing game screen Proc;;;;;;;
 finishgame PROC
+;clear the screen
+Mov ax, 03h
+int 10h
+
+
 ;;;;clear screan
 mov ax,0600h
 mov bh,07
