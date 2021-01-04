@@ -4,9 +4,11 @@
 
 ;Enter Name Screen Data
 Player1_Name db 30, ?,30 dup('$')
+lenPlayer1 equ $ - Player1_Name
 Player2_Name db 30, ?,30 dup('$')
-NormalStatus db 'Normal','$'
-FrozenStatus db 'Frozen','$'
+lenPlayer2 equ $ - Player2_Name
+NormalStatus db 'Normal     ','$'
+FrozenStatus db 'Frozen     ','$'
 SpeededUpStatus db 'Speed Up','$'
 StatusPlayer1 db 0                       ;to indicate the current state of the player(Normal,Frozen,SpeededUP)
 StatusPlayer2 db 0
@@ -80,6 +82,11 @@ Horizintal_Line_Start_Column dw ?
 Horizintal_Line_End_Column dw ?
 Horizintal_Line_Row dw ?
 
+
+; Drawing Vertical Line Attributes
+Vertical_Line_Start_Row dw ?
+Vertical_Line_End_Row dw ?
+Vertical_Line_Column dw ?
 ;Temp Variables that are commonly used by left & right arrows
 Icon_middle_Row dw ? ;for icons who have an odd height (5 pixels, 7 pixels, etc.)
 Icon_Start_End_Column dw ? ;for icons who have an odd height (5 pixels, 7 pixels, etc.)
@@ -119,17 +126,17 @@ Backward_Icon_End_Column dw 65
 Backward_Color db 0Fh ;white
 
 ;player1 data
-X_coordinate_Start dw 0
-Y_coordinate_Start dw 0
-X_coordinate_End dw 4
-Y_coordinate_End dw 4
+X_coordinate_Start dw 95
+Y_coordinate_Start dw 107
+X_coordinate_End dw 99
+Y_coordinate_End dw 111
 
 
 ;player2 data
-X_2_coordinate_Start dw 200 
-Y_2_coordinate_Start dw 150
-X_2_coordinate_End dw 204
-Y_2_coordinate_End dw 154
+X_2_coordinate_Start dw 220 
+Y_2_coordinate_Start dw 24
+X_2_coordinate_End dw 224
+Y_2_coordinate_End dw 28
 
 ;indicate which player olay now 
 PlayerNum db 1
@@ -139,15 +146,13 @@ Speed_Player_1 dw 2
 Speed_Player_2 dw 2
 
 ; Saving the time for chaning the speed
-StartTimePlayer1CL db ?
-StartTimePlayer1Ch db ?
-StartTimePlayer1DH db ?
-SpeedChangedClicks dw 10   ;this is the amount of ticks that the player will remain is this chaning speed mode per sec
+ButtonClicksPlayer1 db 0
+ButtonClicksPlayer2 db 0
 
 ;Finishing the game Data
 end1 db 'END GAME','$'
 winner db 'The winner is ','$'
-Nameofwinner db 'Nadeen','$' ;this data will be changed next
+Nameofwinner db 30 dup('$') ;this data will be changed next
 movtooptions db 'To move to the option screen please press Enter','$'
 
 .code 
@@ -437,22 +442,22 @@ FreezePlayer PROC
     call deletePlayer    
 
      ;the satus and speed of player to be freezed
-    mov bx,0
-    mov currentSpeed,bx
-    mov bx,1  
-     cmp PlayerNum,2
+    ; mov bx,0
+    ; mov currentSpeed,bx
+    cmp PlayerNum,2
     jne P1
     mov StatusPlayer1,1
-    jmp Freeze
+    mov Speed_Player_1,0
+    mov ButtonClicksPlayer1 ,0
+    jmp EndFreeze
     P1:
     mov StatusPlayer2,1
-    Freeze:
-    ; to get the system time
-    mov ah,2
-    int 1Ah   ; ch=hours / cl =minutes / dh =seconds 
-    mov StartTimePlayer1Ch,Ch 
-    mov StartTimePlayer1CL,cl      
-    mov StartTimePlayer1Dh ,Dh   
+    mov Speed_Player_2,0
+    mov ButtonClicksPlayer2 ,0
+
+    EndFreeze:
+    ; used the number of clicks on the moving arrows 
+    mov HintExist,0   ;reset hint exist   
     ret
 FreezePlayer ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; To Speed The Player ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -475,87 +480,60 @@ SpeedPlayer PROC
 
     call deletePlayer  
 
-      ;the satus and speed of player to be freezed
-    mov bx,4
+      ;the satus and speed of player to be speeded
+    mov bx,5
     mov currentSpeed,bx
-    mov bx,2  
-    mov StatusPlayer1,2
-    mov StatusPlayer2,2
-     cmp PlayerNum,1
+    cmp PlayerNum,1
     jne P2
     mov StatusPlayer1,2
-    jmp SpeedUp 
+    mov Speed_Player_1,bx
+    mov ButtonClicksPlayer1 ,0
+    jmp EndSpeedUp 
     P2:
     mov StatusPlayer2,2
+    mov Speed_Player_2,bx
+    mov ButtonClicksPlayer2 ,0
     
-    SpeedUP:
-    ; to get the system time
-    mov ah,2
-    int 1Ah   ; ch=hours / cl =minutes / dh =seconds 
-    mov StartTimePlayer1Ch,Ch 
-    mov StartTimePlayer1CL,cl      
-    mov StartTimePlayer1Dh ,Dh  
-
+    EndSpeedUP:
+    mov HintExist,0   ;reset hint exist
+ 
     ret
 SpeedPlayer ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Reset Player Speed ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;description
 CheckResetPlayerSpeed PROC
+    cmp PlayerNum,1
+    jne Player2CheckButton
+    mov al,ButtonClicksPlayer1
+    inc al  
+    mov ButtonClicksPlayer1,al
+    cmp al ,20
+    jGe Reset
+    jmp EndCheckSpeed
 
-    ; The Bx will sotre the time difference in seconds between current
-    ; Time and the time the player took the hint
+    Player2CheckButton:
+    mov al ,ButtonClicksPlayer2
+    inc al  
+    mov ButtonClicksPlayer2,al
+    cmp al,20
+    JGE Reset 
+    jmp EndCheckSpeed
 
-    ; to get the system time
-    mov ah,2
-    int 1Ah   ; ch=hours / cl =minutes / dh =seconds 
-
-    mov bx,0
-    cmp StartTimePlayer1Ch,ch
-    je CalculateMinutes
-    mov bx,3600
-    CalculateMinutes:cmp StartTimePlayer1CL ,cl
-    je CalculateSeconds
-    cmp bx,0
-    je AddingMinutes
-    ; sub bx,3540
-    mov bx,60
-    jmp CalculateSeconds
-    AddingMinutes:mov bx,60
-    CalculateSeconds:cmp StartTimePlayer1DH,dh
-    je ActionToTake
-    jG StartSecondsGreater
-    sub dh,StartTimePlayer1DH
-    mov cl,dh
-    mov ch,0
-    cmp bx,0
-    je AddSeconds
-    sub bx,cx
-    jmp ActionToTake
-
-
-    StartSecondsGreater:
-    mov cl,StartTimePlayer1DH
-    sub cl,dh
-    mov ch,0
-    cmp bx,0
-    je AddSeconds
-    sub bx,cx
-    jmp ActionToTake
-
-    AddSeconds:mov bx,cx
-    
-
-    ActionToTake:
-    cmp bx,SpeedChangedClicks 
-    jl EndCheckSpeed
-
-    ; retrun to noraml speed
-    mov bx,2
-    mov currentSpeed,bx
-    mov bx,0 
-    mov StatusPlayer1,0
-    mov StatusPlayer2,0
+    Reset:
+    mov di,2
+    mov currentSpeed,di
+    mov bl,0 
+    cmp PlayerNum,1
+    jne Player2Reset
+    mov StatusPlayer1,bl
+    mov Speed_Player_1,di
+    mov ButtonClicksPlayer1 ,bl
+    jmp EndCheckSpeed
+    Player2Reset:
+    mov StatusPlayer2,bl
+    mov Speed_Player_2,di
+    mov ButtonClicksPlayer2 ,bl
 
 EndCheckSpeed:
     ret
@@ -1419,6 +1397,53 @@ DrawAHorizontalLine PROC FAR
     JNA draw_horizontal_line
     ret
 DrawAHorizontalLine ENDP
+
+DrawAVerticalLine PROC FAR
+    mov dx,Vertical_Line_Start_Row
+    mov cx,Vertical_Line_Column
+    draw_Vertical_line: int 10h
+    inc dx
+    cmp dx,Vertical_Line_End_Row
+    JNA draw_Vertical_line
+    ret
+DrawAVerticalLine ENDP
+
+;description
+DrawGateMaze1 PROC
+
+    ; gate for player1
+    mov Horizintal_Line_Start_Column,80 
+    mov Horizintal_Line_End_Column, 100
+    mov  Horizintal_Line_Row ,104
+    mov al,0Bh 
+    call DrawAHorizontalLine
+
+    mov  Horizintal_Line_Row ,116
+    call DrawAHorizontalLine
+
+    mov Vertical_Line_Start_Row,104
+    mov  Vertical_Line_End_Row,116
+    mov Vertical_Line_Column ,80
+    call DrawAVerticalLine
+
+    ; gate for player 2
+    mov Horizintal_Line_Start_Column,220 
+    mov Horizintal_Line_End_Column, 240
+    mov  Horizintal_Line_Row ,20
+    mov al,0Bh 
+    call DrawAHorizontalLine
+
+    mov  Horizintal_Line_Row ,31
+    call DrawAHorizontalLine
+
+    mov Vertical_Line_Start_Row,20
+    mov  Vertical_Line_End_Row,31
+    mov Vertical_Line_Column ,240
+    call DrawAVerticalLine
+
+
+    ret
+DrawGateMaze1 ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;END OF UTILITY FUNCTIONS USED IN DRAWING HINTS;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;DRAWING HINTS' PROCDURES;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1742,7 +1767,24 @@ movRight PROC FAR
     ;A right move consists of (currentspeed) single right moves 
     ;We'll excute this function currentspeed times or till we face an invalid single right move 
     mov si,0
+    ; First Lets check if he is not in normal speed
+    cmp PlayerNum,1
+    jne CheckStatusOfPlayer2Right
+    cmp StatusPlayer1,0
+    je Continue_The_Right_Move_If_Valid
+    call CheckResetPlayerSpeed 
+    cmp StatusPlayer1,1
+    je  AnotherOneRight
+    call DrowStatusBar 
+    jmp Continue_The_Right_Move_If_Valid     ;IF palyer 1 is speeding
     
+    CheckStatusOfPlayer2Right:
+    cmp StatusPlayer2,0
+    je Continue_The_Right_Move_If_Valid
+    call CheckResetPlayerSpeed
+    cmp StatusPlayer2,1
+    Je AnotherOneRight
+    call DrowStatusBar 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Wall constrain;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;checking the validity of moving right
     ;setting attributes for reading the pixel color (note that the color is returned in al)
@@ -1755,6 +1797,11 @@ movRight PROC FAR
     mov cx,X_coordinate_End
     ;the column just right to the player
     inc cx
+
+    jmp Skip_R
+    AnotherOneRight:Jmp Going_To_End_Of_Moving_Right
+    Skip_R:
+
     
     ;Scanning is done from buttom to top
     Continue_Scanning_Right_Column: 
@@ -1801,6 +1848,7 @@ movRight PROC FAR
     jne Hint4R 
     call FreezePlayer
     call DrowStatusBar   ;Update Status bar
+    Jmp Going_To_End_Of_Moving_Right
     
           
     Hint4R :
@@ -1818,10 +1866,6 @@ movRight PROC FAR
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;the moving logic;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
-    ; First Lets check if he is not in normal speed
-    cmp StatusPlayer1,0
-    je MovingRightItself
-    call CheckResetPlayerSpeed 
 
 	MovingRightItself:
     mov di,Y_coordinate_End
@@ -1881,7 +1925,25 @@ movLeft PROC FAR
     ;A left move consists of (currentspeed) single left moves 
     ;We'll excute this function currentspeed times or till we face an invalid single left move 
     mov si,0
+    ; First Lets check if he is not in normal speed
+    cmp PlayerNum,1
+    jne CheckStatusOfPlayer2Left
+    cmp StatusPlayer1,0
+    je Continue_The_Left_Move_If_Valid
+    call CheckResetPlayerSpeed 
+    cmp StatusPlayer1,1
+    je  AnotherOneLeft
+    call DrowStatusBar 
+    jmp Continue_The_Left_Move_If_Valid     ;IF palyer 1 is speeding
     
+    CheckStatusOfPlayer2Left:
+    cmp StatusPlayer2,0
+    je Continue_The_Left_Move_If_Valid
+    call CheckResetPlayerSpeed
+    cmp StatusPlayer2,1
+    Je AnotherOneLeft
+    call DrowStatusBar 
+
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Wall constrain;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;checking the validity of moving left
     ;setting attributes for reading the pixel color
@@ -1895,6 +1957,12 @@ movLeft PROC FAR
     ;the column just left to the player
     mov cx,X_coordinate_Start
     
+    jmp Skip_L
+    AnotherOneLeft:Jmp Going_To_End_Of_Moving_Left
+    Skip_L:
+
+
+
     ;scanning is done from bottom to top
     Continue_Scanning_Left_Column: 
     ;Read graphics pixel and comparing it with the Maze color
@@ -1960,7 +2028,8 @@ No_Hint_L:
     cmp HintExist,bl
     jne Hint4L
     call FreezePlayer
-    call DrowStatusBar   
+    call DrowStatusBar 
+    jmp Going_To_End_Of_Moving_Left  
 
     ;This lines is done to JUMP TWICE TILL THE END OF THE PROCEDURE IF THE PLAYER DON'T HAVE THE CREDIT TO MOVE Left
     
@@ -1976,11 +2045,7 @@ No_Hint_L:
 
     
 
-    ; First Lets check if he is not in normal speed
-    cmp StatusPlayer1,0
-    je MovingLeftItself
-    call CheckResetPlayerSpeed 
-
+  
 	MovingLeftItself:
 	mov di,Y_coordinate_End
 	mov Delete_Y_coordinate_End,di
@@ -2041,6 +2106,26 @@ movUP PROC FAR
     ;An up move consists of (currentspeed) single up moves 
     ;We'll excute this function currentspeed times or till we face an invalid single up move 
     mov si,0
+
+     ; First Lets check if he is not in normal speed
+   cmp PlayerNum,1
+    jne CheckStatusOfPlayer2Up
+    cmp StatusPlayer1,0
+    je Continue_The_Up_Move_If_Valid
+    call CheckResetPlayerSpeed 
+    cmp StatusPlayer1,1
+    je  AnotherOneUp
+    call DrowStatusBar 
+    jmp Continue_The_Up_Move_If_Valid     ;IF palyer 1 is speeding
+    
+    CheckStatusOfPlayer2Up:
+    cmp StatusPlayer2,0
+    je Continue_The_Up_Move_If_Valid
+    call CheckResetPlayerSpeed
+    cmp StatusPlayer2,1
+    Je AnotherOneUp
+    call DrowStatusBar 
+
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Wall constrain;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;checking the validity of moving up
@@ -2055,6 +2140,10 @@ movUP PROC FAR
     mov dx,Y_coordinate_Start
     mov cx,X_coordinate_End
     
+    jmp Skip_U
+    AnotherOneUp:Jmp Going_To_End_Of_Moving_Up
+    Skip_U:
+
     ;scanning is done from left to right
     Continue_Scanning_Upper_Row: 
     ;Read graphics pixel and comparing it with the Maze color
@@ -2099,7 +2188,8 @@ movUP PROC FAR
     cmp HintExist,bl
     jne Hint4U
     call FreezePlayer
-    call DrowStatusBar         
+    call DrowStatusBar 
+    jmp Going_To_End_Of_Moving_Up        
 
 
     Hint4U:
@@ -2114,10 +2204,6 @@ movUP PROC FAR
     Going_To_End_Of_Moving_Up: JMP End_Of_Moving_Up
     SKIP_THIS_U:
     
-    ; First Lets check if he is not in normal speed
-    cmp StatusPlayer1,0
-    je MovingUpItself
-    call CheckResetPlayerSpeed 
 
 	MovingUpItself:
     mov di,Y_coordinate_End
@@ -2174,6 +2260,25 @@ movDown PROC FAR
     ;A down move consists of (currentspeed) single down moves 
     ;We'll excute this function currentspeed times or till we face an invalid single down move 
     mov si,0
+
+    ; First Lets check if he is not in normal speed
+    cmp PlayerNum,1
+    jne CheckStatusOfPlayer2Down
+    cmp StatusPlayer1,0
+    je Continue_The_Down_Move_If_Valid
+    call CheckResetPlayerSpeed 
+    cmp StatusPlayer1,1
+    je  AnotherOneDown
+    call DrowStatusBar 
+    jmp Continue_The_Down_Move_If_Valid     ;IF palyer 1 is speeding
+    
+    CheckStatusOfPlayer2Down:
+    cmp StatusPlayer2,0
+    je Continue_The_Down_Move_If_Valid
+    call CheckResetPlayerSpeed
+    cmp StatusPlayer2,1
+    Je AnotherOneDown
+    call DrowStatusBar 
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Wall constrain;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;checking the validity of moving down
@@ -2189,6 +2294,11 @@ movDown PROC FAR
     inc dx
     mov cx,X_coordinate_End
     
+
+    jmp Skip_D
+    AnotherOneDown:Jmp Going_To_End_Of_Moving_Down
+    Skip_D:
+
     ;scanning is done from left to right
     Continue_Scanning_Below_Row: 
     ;Read graphics pixel and comparing it with the Maze color
@@ -2233,7 +2343,8 @@ movDown PROC FAR
     cmp HintExist,bl
     jne Hint4D
     call FreezePlayer
-    call DrowStatusBar    
+    call DrowStatusBar 
+    jmp Going_To_End_Of_Moving_Down   
 
 
     Hint4D:               ;SPEED UP HINT
@@ -2250,10 +2361,6 @@ movDown PROC FAR
     
     ;deleting the mosttop row
 
-    ; First Lets check if he is not in normal speed
-    cmp StatusPlayer1,0
-    je MovingDownItself
-    call CheckResetPlayerSpeed 
 
 	MovingDownItself:
     mov di,Y_coordinate_Start
@@ -2427,14 +2534,18 @@ Level1Screen PROC FAR
     ;initialize the screen with the maze + the player + the hints
     call DrawLevel1
    
+    ; Drawing Gate For Each Player 
+    call DrawGateMaze1
 
     ;MOVING LOGIC
     ;get key pressed
     getKeyPressed1:
     mov ah,0
     int 16h
+
+
     
-    ;the key scancode  is stored in al WE USE W,A,S,D FOR THE SECOND PLAYER
+    ;the key scancode  is stored in ah WE USE W,A,S,D FOR THE SECOND PLAYER
     ;first player checks
     cmp aH,20h                  ;D 
     JNE Secondcmp
@@ -2493,7 +2604,7 @@ Level1Screen PROC FAR
     ;the key scancode is stored in ah  WE USE ARROWS FOR THE FIRST PLAYER 
     ;second player checks
     fifthcmp:
-    cmp ah,4Dh
+    cmp ah,4Dh                      ;Right Arrow
     JNE sixcmp
     cmp PlayerNum,1
     je rightArrowKey1
@@ -2504,7 +2615,7 @@ Level1Screen PROC FAR
     jmp rightArrowKey1
 
     sixcmp:
-    cmp ah,4Bh
+    cmp ah,4Bh                         ;Left Arrow
     JNE sevencmp
     cmp PlayerNum,1
     je leftArrowKey1
@@ -2515,7 +2626,7 @@ Level1Screen PROC FAR
     jmp leftArrowKey1
 
     sevencmp:
-    cmp ah,48h
+    cmp ah,48h                          ;Up arrow
     JNE eightcmp
     cmp PlayerNum,1
     je upArrowKey1
@@ -2526,7 +2637,7 @@ Level1Screen PROC FAR
     jmp upArrowKey1
 
     eightcmp:
-    cmp ah,50h
+    cmp ah,50h                          ;Down Arrow
     JNE FINISH
     cmp PlayerNum,1
     je downArrowKey1
@@ -2535,15 +2646,52 @@ Level1Screen PROC FAR
     mov PlayerNum,1
     call Exchange
     jmp downArrowKey1
-    rightArrowKey1: call movRight
+
+    
+
+    rightArrowKey1: 
+    cmp PlayerNum,1
+    jne ExecuteRight
+    cmp X_coordinate_End,239
+    je player1Wins 
+    ExecuteRight:call movRight
     JMP getKeyPressed1
-    leftArrowKey1: call movLeft
+
+    leftArrowKey1:
+    cmp PlayerNum,2
+    jne ExecuteLeft
+    cmp X_coordinate_Start,80
+    je player2Wins
+    ExecuteLeft:call movLeft
     JMP getKeyPressed1
+
+
     upArrowKey1: call movUP
     JMP getKeyPressed1
+
+
     downArrowKey1: call movDown
+    jmp FINISH
+    
+    player2Wins:
+    mov si, offset Player2_Name +2
+    mov di,offset Nameofwinner
+    mov cx,lenPlayer2
+    REP movsb
+    jmp ExecuteWinner 
+
+    player1Wins:
+    mov si,offset Player1_Name+2
+    mov di,offset Nameofwinner
+    mov cx,lenPlayer1
+    REP movsb
+    jmp ExecuteWinner 
+
+
     FINISH:
     JMP getKeyPressed1
+
+    ExecuteWinner :call finishgame
     Ret
 Level1Screen ENDP
 
@@ -2990,9 +3138,10 @@ initializePlayer ENDP
 Main PROC Far
 Mov ax, @data 
 mov ds ,ax
+mov es ,ax 
 
 call Enter_Name_Screen
-call finishgame
+
 
 EndCode :
 ret
