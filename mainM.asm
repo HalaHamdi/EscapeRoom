@@ -375,8 +375,8 @@ MoveForward PROC
     je Level2_Back
     cmp PlayerNum,1
     jne PLR1 
-    mov X_2_coordinate_Start,95          ;Coordinates in Level one if it is taken by player2 and applied on player1
-    mov X_2_coordinate_End,99
+   mov X_2_coordinate_Start,88          ;Coordinates in Level one if it is taken by player2
+    mov X_2_coordinate_End,92
     mov Y_2_coordinate_End,111
     mov Y_2_coordinate_Start,107
     call Exchange           
@@ -385,8 +385,8 @@ MoveForward PROC
     jmp SetDelete_CO_Back
 
     PLR1:
-    mov X_2_coordinate_Start,220          ;Coordinates in Level one if it is taken by player1 and applied on player2
-    mov X_2_coordinate_End,224
+   mov X_2_coordinate_Start,230          ;Coordinates in Level one if it is taken by player1
+    mov X_2_coordinate_End,234
     mov Y_2_coordinate_End,28
     mov Y_2_coordinate_Start,24
     call Exchange
@@ -3043,6 +3043,9 @@ waiting ENDP
 
 ;;;;Finishing game screen Proc;;;;;;;
 finishgame PROC
+
+mov StatusPlayer1, 0                       ;to to reset the 2 players status to normal 
+mov StatusPlayer2 ,0
 ;clear the screen
 Mov ax, 03h
 int 10h
