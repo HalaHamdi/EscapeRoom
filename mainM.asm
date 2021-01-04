@@ -1444,6 +1444,27 @@ DrawGateMaze1 PROC
 
     ret
 DrawGateMaze1 ENDP
+
+
+;description
+ResetPlayersCoordinates_Maze1 PROC
+    
+    mov PlayerNum,1
+    
+    ;player1 data
+    mov X_coordinate_Start , 95
+    mov Y_coordinate_Start , 107
+    mov X_coordinate_End , 99
+    mov Y_coordinate_End , 111
+
+    ;player2 data
+    mov X_2_coordinate_Start , 220 
+    mov Y_2_coordinate_Start , 24
+    mov X_2_coordinate_End , 224
+    mov Y_2_coordinate_End , 28
+
+    ret
+ResetPlayersCoordinates_Maze1 ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;END OF UTILITY FUNCTIONS USED IN DRAWING HINTS;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;DRAWING HINTS' PROCDURES;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2497,6 +2518,7 @@ DrawLevel1 PROC FAR
     call DrawBackwardHint
 
     ;Initializing player1 between the positions (X_coordinate_Start,Y_coordinate_Start) and (X_coordinate_End,Y_coordinate_End) 
+    call ResetPlayersCoordinates_Maze1
     call initialDraw
     call initialDrawPlayer2
     ret
